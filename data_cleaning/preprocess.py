@@ -71,7 +71,7 @@ def w2v_word_embeddings(data):
     EMBEDDING_SIZE = 100
 
     embeddings_dict = dict()
-    with open(f'embedding-models/glove.6B.{EMBEDDING_SIZE}d.txt', encoding='utf-8') as f:
+    with open(f'data_cleaning/embedding-models/glove.6B.{EMBEDDING_SIZE}d.txt', encoding='utf-8') as f:
         for line in f:
             values = line.split()
             word = values[0]
@@ -91,7 +91,7 @@ def w2v_word_embeddings(data):
 
 
 def bert_output_logits(data):
-    bert_tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
+    bert_tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased',TOKENIZERS_PARALLELISM=False)
     bert_model = DistilBertModel.from_pretrained('distilbert-base-uncased')
     print('bert model loaded')
 
@@ -99,9 +99,10 @@ def bert_output_logits(data):
         tokens = bert_tokenizer(batch, return_tensors='pt',
                                 padding=True,
                                 truncation=True,
-                                max_length=50)
+                                max_length=80,
+                                add_special_tokens=True)
         outputs = bert_model(**tokens)
-        return outputs.last_hidden_state[:, 0, :].detach().numpy()
+        return outputs.last_hidden_state.mean(dim=1).detach().numpy()
     
     start = time.time()
     x_train = []
@@ -112,7 +113,7 @@ def bert_output_logits(data):
         del output
         print(f'batch {k} done.')
         i = j
-        j += 500
+        j += 380
         k += 1
     
     x_train = np.array(x_train)
@@ -125,7 +126,7 @@ def bert_output_logits(data):
 def get_training_date(filename='data_cleaning/training_data.npy', feature_modeling_fun=tf_idf_features):
     x_train = np.load(filename, allow_pickle=True)
     np.random.shuffle(x_train)
-    # x_train = x_train[:5000,:]
+
     print('loaded')
 
     ws_descriptions = [str(text) for text in x_train[:, 1] if text is not np.nan]
